@@ -7,11 +7,6 @@
     "icon": "./assets/icon.png",
     "scheme": "unipilot",
     "userInterfaceStyle": "automatic",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#6C63FF"
-    },
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -25,14 +20,12 @@
         "backgroundColor": "#6C63FF"
       },
       "package": "com.unipilot.app",
-      "compileSdkVersion": 35,
-      "targetSdkVersion": 35,
       "permissions": [
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.VIBRATE",
         "android.permission.POST_NOTIFICATIONS"
       ],
-      "versionCode": 3
+      "versionCode": 4
     },
     "web": {
       "bundler": "metro",
@@ -42,6 +35,14 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#6C63FF"
+        }
+      ],
       [
         "expo-notifications",
         {
