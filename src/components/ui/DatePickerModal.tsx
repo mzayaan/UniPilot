@@ -1,9 +1,6 @@
-import React, { useState } from 'react';
-import {
-  Modal, View, Text, StyleSheet, TouchableOpacity,
-  SafeAreaView,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import React, { useState, useEffect } from 'react';
+import { Modal, View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { Colors, Typography, Spacing, BorderRadius } from '../../lib/theme';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -16,146 +13,81 @@ interface DatePickerModalProps {
   minDate?: string; // YYYY-MM-DD
 }
 
-const MONTHS = [
-  'January','February','March','April','May','June',
-  'July','August','September','October','November','December',
-];
-const DAYS_OF_WEEK = ['Su','Mo','Tu','We','Th','Fr','Sa'];
-
-function getDaysInMonth(year: number, month: number) {
-  return new Date(year, month + 1, 0).getDate();
-}
-function getFirstDayOfMonth(year: number, month: number) {
-  return new Date(year, month, 1).getDay();
+function parseDate(dateStr: string): Date {
+  if (dateStr && /^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+    return new Date(dateStr + 'T00:00:00');
+  }
+  return new Date();
 }
 
-export function DatePickerModal({ visible, value, onConfirm, onClose, title = 'Select Date', minDate }: DatePickerModalProps) {
+function formatDateStr(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+export function DatePickerModal({
+  visible,
+  value,
+  onConfirm,
+  onClose,
+  title = 'Select Date',
+  minDate,
+}: DatePickerModalProps) {
   const { colors } = useTheme();
+  const [tempDate, setTempDate] = useState<Date>(parseDate(value));
 
-  const initial = value && /^\d{4}-\d{2}-\d{2}/.test(value)
-    ? new Date(value + 'T00:00:00')
-    : new Date();
+  useEffect(() => {
+    if (!visible) return;
 
-  const [viewYear, setViewYear] = useState(initial.getFullYear());
-  const [viewMonth, setViewMonth] = useState(initial.getMonth());
-  const [selectedDate, setSelectedDate] = useState<string>(
-    value && /^\d{4}-\d{2}-\d{2}/.test(value) ? value : ''
-  );
+    const current = parseDate(value);
+    setTempDate(current);
 
-  const daysInMonth = getDaysInMonth(viewYear, viewMonth);
-  const firstDay = getFirstDayOfMonth(viewYear, viewMonth);
+    if (Platform.OS === 'android') {
+      DateTimePickerAndroid.open({
+        value: current,
+        mode: 'date',
+        minimumDate: minDate ? parseDate(minDate) : undefined,
+        onChange: (event, selectedDate) => {
+          if (event.type === 'set' && selectedDate) {
+            onConfirm(formatDateStr(selectedDate));
+          }
+          onClose();
+        },
+      });
+    }
+  }, [visible]);
 
-  function prevMonth() {
-    if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
-    else setViewMonth(m => m - 1);
-  }
-  function nextMonth() {
-    if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
-    else setViewMonth(m => m + 1);
-  }
+  // Android uses the imperative API above — nothing to render
+  if (Platform.OS === 'android') return null;
 
-  function toDateStr(y: number, m: number, d: number) {
-    return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-  }
-
-  function isDisabled(day: number) {
-    if (!minDate) return false;
-    return toDateStr(viewYear, viewMonth, day) < minDate;
-  }
-
-  function handleDay(day: number) {
-    if (isDisabled(day)) return;
-    setSelectedDate(toDateStr(viewYear, viewMonth, day));
-  }
-
-  function handleConfirm() {
-    if (selectedDate) onConfirm(selectedDate);
-    onClose();
-  }
-
-  // Build calendar grid (pad with nulls)
-  const cells: (number | null)[] = [];
-  for (let i = 0; i < firstDay; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-
+  // iOS: bottom sheet with native spinner
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <View style={[styles.container, { backgroundColor: colors.card, shadowColor: colors.text }]}>
-          {/* Header */}
+        <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
+        <View style={[styles.sheet, { backgroundColor: colors.card }]}>
           <View style={[styles.header, { borderBottomColor: colors.border }]}>
+            <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={[styles.headerBtn, { color: colors.textSecondary }]}>Cancel</Text>
+            </TouchableOpacity>
             <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={22} color={colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Month navigation */}
-          <View style={styles.navRow}>
-            <TouchableOpacity onPress={prevMonth} style={styles.navBtn}>
-              <Ionicons name="chevron-back" size={20} color={Colors.primary} />
-            </TouchableOpacity>
-            <Text style={[styles.monthLabel, { color: colors.text }]}>
-              {MONTHS[viewMonth]} {viewYear}
-            </Text>
-            <TouchableOpacity onPress={nextMonth} style={styles.navBtn}>
-              <Ionicons name="chevron-forward" size={20} color={Colors.primary} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Day-of-week headers */}
-          <View style={styles.weekRow}>
-            {DAYS_OF_WEEK.map(d => (
-              <Text key={d} style={[styles.weekDay, { color: colors.textTertiary }]}>{d}</Text>
-            ))}
-          </View>
-
-          {/* Calendar grid */}
-          <View style={styles.grid}>
-            {cells.map((day, i) => {
-              if (day === null) return <View key={`e-${i}`} style={styles.cell} />;
-              const dateStr = toDateStr(viewYear, viewMonth, day);
-              const isSelected = dateStr === selectedDate;
-              const disabled = isDisabled(day);
-              const isToday = dateStr === toDateStr(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
-              return (
-                <TouchableOpacity
-                  key={`d-${day}`}
-                  style={[
-                    styles.cell,
-                    isSelected && { backgroundColor: Colors.primary, borderRadius: 20 },
-                    isToday && !isSelected && { borderWidth: 1.5, borderRadius: 20, borderColor: Colors.primary },
-                  ]}
-                  onPress={() => handleDay(day)}
-                  disabled={disabled}
-                >
-                  <Text style={[
-                    styles.dayText,
-                    { color: disabled ? colors.textTertiary : isSelected ? '#fff' : colors.text },
-                    isToday && !isSelected && { color: Colors.primary, fontWeight: Typography.bold },
-                  ]}>
-                    {day}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          {/* Confirm */}
-          <View style={[styles.footer, { borderTopColor: colors.border }]}>
-            <TouchableOpacity onPress={onClose} style={styles.cancelBtn}>
-              <Text style={{ color: colors.textSecondary, fontSize: Typography.base }}>Cancel</Text>
-            </TouchableOpacity>
             <TouchableOpacity
-              onPress={handleConfirm}
-              style={[styles.confirmBtn, { backgroundColor: Colors.primary }, !selectedDate && { opacity: 0.4 }]}
-              disabled={!selectedDate}
+              onPress={() => { onConfirm(formatDateStr(tempDate)); onClose(); }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Text style={{ color: '#fff', fontWeight: Typography.semibold, fontSize: Typography.base }}>
-                Confirm
-              </Text>
+              <Text style={[styles.headerBtn, { color: Colors.primary, fontWeight: Typography.semibold }]}>Done</Text>
             </TouchableOpacity>
           </View>
+          <DateTimePicker
+            value={tempDate}
+            mode="date"
+            display="spinner"
+            minimumDate={minDate ? parseDate(minDate) : undefined}
+            onChange={(_, date) => { if (date) setTempDate(date); }}
+            style={styles.picker}
+          />
         </View>
       </View>
     </Modal>
@@ -165,19 +97,21 @@ export function DatePickerModal({ visible, value, onConfirm, onClose, title = 'S
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: Spacing.xl,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.4)',
   },
-  container: {
-    width: '100%',
-    borderRadius: BorderRadius.xl,
-    overflow: 'hidden',
-    elevation: 10,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
+  backdrop: {
+    flex: 1,
+  },
+  sheet: {
+    borderTopLeftRadius: BorderRadius.xl,
+    borderTopRightRadius: BorderRadius.xl,
+    paddingBottom: Spacing['3xl'],
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 8,
   },
   header: {
     flexDirection: 'row',
@@ -187,55 +121,14 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
     borderBottomWidth: 1,
   },
-  title: { fontSize: Typography.base, fontWeight: Typography.semibold },
-  navRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.md,
-  },
-  navBtn: { padding: Spacing.sm },
-  monthLabel: { fontSize: Typography.base, fontWeight: Typography.bold },
-  weekRow: {
-    flexDirection: 'row',
-    paddingHorizontal: Spacing.sm,
-    marginBottom: 4,
-  },
-  weekDay: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: Typography.xs,
+  title: {
+    fontSize: Typography.base,
     fontWeight: Typography.semibold,
   },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: Spacing.sm,
-    paddingBottom: Spacing.sm,
+  headerBtn: {
+    fontSize: Typography.base,
   },
-  cell: {
-    width: `${100 / 7}%`,
-    aspectRatio: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dayText: { fontSize: Typography.sm },
-  footer: {
-    flexDirection: 'row',
-    borderTopWidth: 1,
-    padding: Spacing.md,
-    gap: Spacing.sm,
-  },
-  cancelBtn: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: Spacing.sm,
-  },
-  confirmBtn: {
-    flex: 2,
-    alignItems: 'center',
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.md,
+  picker: {
+    height: 200,
   },
 });

@@ -13,12 +13,12 @@ import { useAuth } from '../../src/context/AuthContext';
 import { useTheme } from '../../src/context/ThemeContext';
 import { getOfferings, purchasePackage, restorePurchases } from '../../src/lib/purchases';
 
-// ── Static plan display data ──────────────────────────────────────────────────
+// ── Static plan display data (USD fallbacks — RC live prices take precedence) ─
 const PLAN_DISPLAY = [
   {
     id: 'free',
     name: 'Free',
-    price: 'Rs 0',
+    price: '$0',
     period: 'forever',
     color: '#9CA3AF',
     features: [
@@ -35,7 +35,7 @@ const PLAN_DISPLAY = [
     id: 'pro_monthly',
     rcId: 'pro_monthly',
     name: 'Pro',
-    price: 'Rs 199',
+    price: '$2.99',
     period: 'per month',
     color: Colors.primary,
     badge: 'POPULAR',
@@ -57,7 +57,7 @@ const PLAN_DISPLAY = [
     id: 'pro_plus_monthly',
     rcId: 'pro_plus_monthly',
     name: 'Pro+',
-    price: 'Rs 299',
+    price: '$4.99',
     period: 'per month',
     color: Colors.secondary,
     badge: 'EVERYTHING',
@@ -77,7 +77,15 @@ const PLAN_DISPLAY = [
   },
 ];
 
-const YEARLY_DISCOUNT = { pro_monthly: { id: 'pro_yearly', label: 'Rs 2,149 / year', saving: 'Save Rs 239' }, pro_plus_monthly: { id: 'pro_plus_yearly', label: 'Rs 3,229 / year', saving: 'Save Rs 359' } } as Record<string, { id: string; label: string; saving: string }>;
+const YEARLY_DISCOUNT = {
+  pro_monthly: { id: 'pro_yearly', label: '$19.99 / year', saving: 'Save $15.89' },
+  pro_plus_monthly: { id: 'pro_plus_yearly', label: '$29.99 / year', saving: 'Save $29.89' },
+} as Record<string, { id: string; label: string; saving: string }>;
+
+function formatUSD(pkg: PurchasesPackage | undefined, fallback: string): string {
+  if (!pkg) return fallback;
+  return `$${pkg.product.price.toFixed(2)}`;
+}
 
 export default function SubscriptionScreen() {
   const router = useRouter();
@@ -203,7 +211,18 @@ export default function SubscriptionScreen() {
         {/* Plan cards */}
         {PLAN_DISPLAY.map(plan => {
           const yearly = plan.rcId ? YEARLY_DISCOUNT[plan.rcId] : undefined;
-          const displayPrice = billingCycle === 'yearly' && yearly ? yearly.label : plan.price;
+          const monthlyPkg = plan.rcId ? findPackage(plan.rcId) : undefined;
+          const yearlyPkg = yearly ? findPackage(yearly.id) : undefined;
+
+          const monthlyPrice = formatUSD(monthlyPkg, plan.price);
+          const yearlyLabel = yearlyPkg
+            ? `${formatUSD(yearlyPkg, '')} / year`
+            : yearly?.label ?? '';
+          const yearlySaving = (monthlyPkg && yearlyPkg)
+            ? `Save $${((monthlyPkg.product.price * 12) - yearlyPkg.product.price).toFixed(2)}`
+            : yearly?.saving ?? '';
+
+          const displayPrice = billingCycle === 'yearly' && yearly ? yearlyLabel : monthlyPrice;
           const displayPeriod = billingCycle === 'yearly' && yearly ? '' : plan.period;
           const isFree = plan.id === 'free';
           const isCurrentPlan =
@@ -231,7 +250,7 @@ export default function SubscriptionScreen() {
 
               {billingCycle === 'yearly' && yearly && (
                 <View style={[styles.savingBadge, { backgroundColor: Colors.success + '20' }]}>
-                  <Text style={[styles.savingText, { color: Colors.success }]}>{yearly.saving} vs monthly</Text>
+                  <Text style={[styles.savingText, { color: Colors.success }]}>{yearlySaving} vs monthly</Text>
                 </View>
               )}
 
@@ -277,7 +296,7 @@ export default function SubscriptionScreen() {
 
         <Text style={[styles.disclaimer, { color: colors.textTertiary }]}>
           Subscriptions are billed through Google Play. Cancel anytime in the Play Store.
-          Prices shown in Mauritian Rupees (MUR).
+          Prices shown in USD.
         </Text>
 
         <View style={{ height: 32 }} />
