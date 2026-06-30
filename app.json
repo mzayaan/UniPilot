@@ -7,9 +7,7 @@
     "icon": "./assets/icon.png",
     "scheme": "unipilot",
     "userInterfaceStyle": "automatic",
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.unipilot.app"
@@ -25,7 +23,7 @@
         "android.permission.VIBRATE",
         "android.permission.POST_NOTIFICATIONS"
       ],
-      "versionCode": 5
+      "versionCode": 7
     },
     "web": {
       "bundler": "metro",
@@ -49,7 +47,8 @@
           "icon": "./assets/notification-icon.png",
           "color": "#6C63FF"
         }
-      ]
+      ],
+      "react-native-purchases"
     ],
     "experiments": {
       "typedRoutes": true
