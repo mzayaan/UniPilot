@@ -25,11 +25,13 @@
         "backgroundColor": "#6C63FF"
       },
       "package": "com.unipilot.app",
+      "targetSdkVersion": 35,
       "permissions": [
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.VIBRATE",
         "android.permission.POST_NOTIFICATIONS"
-      ]
+      ],
+      "versionCode": 2
     },
     "web": {
       "bundler": "metro",
