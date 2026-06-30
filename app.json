@@ -12,7 +12,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#6C63FF"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.unipilot.app"
@@ -43,8 +45,7 @@
           "icon": "./assets/notification-icon.png",
           "color": "#6C63FF"
         }
-      ],
-      "react-native-purchases"
+      ]
     ],
     "experiments": {
       "typedRoutes": true
@@ -54,8 +55,9 @@
         "origin": false
       },
       "eas": {
-        "projectId": "YOUR_EAS_PROJECT_ID"
+        "projectId": "fcb6bfc2-6c0f-4183-95b0-10d04411edd2"
       }
-    }
+    },
+    "owner": "mzayaan"
   }
 }
